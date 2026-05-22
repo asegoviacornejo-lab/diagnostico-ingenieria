@@ -1,122 +1,244 @@
 import streamlit as st
+import pandas as pd
 
-st.title("Hola Antonia 👋")
-
-st.write("Mi primera app usando Streamlit y GitHub desde el teléfono.")
-st.button("Presiona aquí")
-import streamlit as st
+# -----------------------------------
+# CONFIGURACIÓN INICIAL
+# -----------------------------------
 
 st.set_page_config(
-    page_title="Diagnóstico Académico Ingeniería",
-    layout="centered"
+    page_title="Diagnóstico Académico",
+    layout="wide"
 )
 
-st.title("Diagnóstico Académico")
+# -----------------------------------
+# TÍTULO
+# -----------------------------------
+
+st.title("📚 Diagnóstico Académico para Ingeniería")
 
 st.markdown("""
-Este diagnóstico está enfocado principalmente en estudiantes de Ingeniería Civil Industrial hasta quinto nivel y estudiantes de otras Ingenierías Civiles en etapa de plan común de la Universidad de La Serena.
+Esta herramienta permite recopilar información académica
+y personal para construir una planificación semanal inteligente.
 
-Esto no impide que estudiantes de otras carreras o universidades puedan utilizarlo. En esos casos, simplemente deberán ingresar manualmente los datos solicitados mediante la opción “OTRO”.
-
-El objetivo es recopilar información de manera ordenada para visualizar tu carga académica semanal.
+Especialmente pensada para estudiantes de ingeniería.
 """)
 
-ramos = {
-    "Introducción al Cálculo": {"T": 6, "L": 2},
-    "Introducción al Álgebra": {"T": 6, "L": 2},
-}
+st.divider()
 
-st.header("Pregunta 1")
+# -----------------------------------
+# PREGUNTA 1 — UNIVERSIDAD
+# -----------------------------------
 
-uls = st.radio(
+st.header("1️⃣ Información Universitaria")
+
+universidad = st.radio(
     "¿Eres estudiante de la Universidad de La Serena?",
     ["Sí", "No"]
 )
 
-estimado = False
+if universidad == "Sí":
 
-if uls == "Sí":
-    universidad = "Universidad de La Serena"
     ct = 27
 
+    st.success(
+        "Se utilizará automáticamente el sistema SCT ULS (27 horas por crédito)."
+    )
+
 else:
-    universidad = st.text_input(
-        "Nombre de tu universidad"
+
+    ct = st.number_input(
+        "Ingrese cuántas horas equivale un crédito transferible en tu universidad:",
+        min_value=1,
+        max_value=100,
+        value=27
     )
 
-    sabe_credito = st.radio(
-        "¿Sabes a cuántas horas equivale 1 crédito transferible en tu universidad?",
-        ["Sí", "No"]
-    )
+st.write(f"📌 Valor actual del crédito transferible: {ct} horas")
 
-    if sabe_credito == "Sí":
-        ct = st.number_input(
-            "Ingresa equivalencia de créditos",
-            min_value=1,
-            step=1
-        )
+st.divider()
 
-    else:
-        ct = "Estimado"
-        estimado = True
-st.header("Pregunta 2")
+# -----------------------------------
+# PREGUNTA 2 — MATERIAS
+# -----------------------------------
+
+st.header("2️⃣ Materias del Semestre")
+
+ramos = {
+    "Cálculo I": {"T": 5, "L": 0},
+    "Cálculo II": {"T": 5, "L": 0},
+    "Álgebra": {"T": 4, "L": 0},
+    "Física I": {"T": 4, "L": 2},
+    "Física II": {"T": 4, "L": 2},
+    "Química": {"T": 3, "L": 2},
+    "Programación": {"T": 3, "L": 2},
+    "Estática": {"T": 4, "L": 1},
+    "Inglés": {"T": 2, "L": 0}
+}
 
 seleccionados = st.multiselect(
-    "Selecciona tus ramos",
+    "Selecciona las materias que estás cursando:",
     list(ramos.keys())
 )
 
-usar_otro = st.checkbox("Agregar ramo OTRO")
+st.divider()
+
+# -----------------------------------
+# OTROS RAMOS
+# -----------------------------------
+
+st.header("3️⃣ Agregar Otros Ramos")
+
+cantidad_otros = st.number_input(
+    "¿Cuántos ramos quieres agregar manualmente?",
+    min_value=0,
+    max_value=10,
+    step=1
+)
 
 otros_ramos = []
-cantidad_otros = 0
 
-if usar_otro:
+for i in range(cantidad_otros):
 
-    cantidad_otros = st.number_input(
-        "¿Cuántos ramos OTRO deseas agregar?",
-        min_value=1,
-        step=1
+    st.subheader(f"Ramo Extra {i+1}")
+
+    nombre = st.text_input(
+        f"Nombre del ramo {i+1}",
+        key=f"nombre_{i}"
     )
 
-    for i in range(cantidad_otros):
+    teoria = st.number_input(
+        f"Horas de teoría semanales {i+1}",
+        min_value=0,
+        step=1,
+        key=f"teoria_{i}"
+    )
 
-        st.subheader(f"OTRO {i+1}")
+    laboratorio = st.number_input(
+        f"Horas de laboratorio/práctica semanales {i+1}",
+        min_value=0,
+        step=1,
+        key=f"lab_{i}"
+    )
 
-        nombre = st.text_input(
-            f"Nombre del ramo {i+1}"
-        )
+    otros_ramos.append({
+        "nombre": nombre,
+        "T": teoria,
+        "L": laboratorio
+    })
 
-        teoria = st.number_input(
-            f"Horas de teoría semanales {i+1}",
-            min_value=0,
-            step=1,
-            key=f"teoria_{i}"
-        )
+st.divider()
 
-        laboratorio = st.number_input(
-            f"Horas de laboratorio/práctica semanales {i+1}",
-            min_value=0,
-            step=1,
-            key=f"lab_{i}"
-        )
+# -----------------------------------
+# BLOQUES SEMANALES
+# -----------------------------------
 
-        otros_ramos.append({
-            "nombre": nombre,
-            "T": teoria,
-            "L": laboratorio
-        })
+st.header("4️⃣ Organización Semanal")
+
+st.markdown("""
+Agrega actividades de tu semana:
+- clases
+- laboratorios
+- transporte
+- trabajo
+- estudio
+- descanso
+""")
+
+if "bloques" not in st.session_state:
+    st.session_state.bloques = []
+
+with st.form("formulario_bloques"):
+
+    dia = st.selectbox(
+        "Día",
+        [
+            "Lunes",
+            "Martes",
+            "Miércoles",
+            "Jueves",
+            "Viernes",
+            "Sábado",
+            "Domingo"
+        ]
+    )
+
+    hora_inicio = st.time_input("Hora de inicio")
+
+    hora_fin = st.time_input("Hora de término")
+
+    tipo = st.selectbox(
+        "Tipo de actividad",
+        [
+            "Clase",
+            "Laboratorio",
+            "Transporte",
+            "Trabajo",
+            "Estudio",
+            "Descanso",
+            "Deporte",
+            "Responsabilidad Familiar"
+        ]
+    )
+
+    materia = st.text_input(
+        "Materia o descripción de la actividad"
+    )
+
+    agregar = st.form_submit_button("Agregar bloque")
+
+    if agregar:
+
+        nuevo_bloque = {
+            "Día": dia,
+            "Inicio": str(hora_inicio),
+            "Fin": str(hora_fin),
+            "Tipo": tipo,
+            "Materia": materia
+        }
+
+        st.session_state.bloques.append(nuevo_bloque)
+
+        st.success("Bloque agregado correctamente ✅")
+
+st.divider()
+
+# -----------------------------------
+# MOSTRAR TABLA
+# -----------------------------------
+
+st.header("5️⃣ Resumen de Actividades")
+
+if len(st.session_state.bloques) > 0:
+
+    df = pd.DataFrame(st.session_state.bloques)
+
+    st.dataframe(
+        df,
+        use_container_width=True
+    )
+
+else:
+
+    st.info("Aún no has agregado actividades.")
+
+st.divider()
+
+# -----------------------------------
+# GENERAR DIAGNÓSTICO
+# -----------------------------------
 
 if st.button("Generar diagnóstico"):
 
     st.divider()
 
-    st.subheader("Resultado")
+    st.header("📊 Resultado del Diagnóstico")
 
-    st.write(f"Universidad: {universidad}")
-    st.write(f"CT: {ct}")
+    st.write(f"### Universidad: {universidad}")
+    st.write(f"### CT utilizado: {ct}")
 
-    st.write("### Ramos")
+    st.divider()
+
+    st.subheader("📖 Ramos")
 
     total_horas = 0
 
@@ -133,7 +255,9 @@ if st.button("Generar diagnóstico"):
             f"- {ramo['nombre']} (T{ramo['T']}, L{ramo['L']})"
         )
 
-    st.write("### Horas autónomas")
+    st.divider()
+
+    st.subheader("⏰ Horas Autónomas Estimadas")
 
     for ramo in seleccionados:
 
@@ -168,8 +292,10 @@ if st.button("Generar diagnóstico"):
         if ramo["L"] > 0:
             st.write(f"- Laboratorio/práctica: {HL} horas")
 
+    st.divider()
+
     st.write(
-        f"## Horas autónomas semanales totales: {total_horas} horas"
+        f"## 📌 Horas autónomas semanales totales: {total_horas} horas"
     )
 
     st.info(
@@ -179,4 +305,6 @@ if st.button("Generar diagnóstico"):
         "y puede ajustarse a tu realidad personal, ritmo de aprendizaje, hábitos de estudio, experiencia previa "
         "y disponibilidad semanal. El objetivo es ayudarte a visualizar tu carga académica de manera más clara "
         "y organizada, no asustarte."
-    )
+            )
+
+
