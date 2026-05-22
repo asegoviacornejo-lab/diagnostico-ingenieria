@@ -1,18 +1,187 @@
 import streamlit as st
 import pandas as pd
+from datetime import datetime
 
-# -----------------------------------
+# =====================================================
 # CONFIGURACIÓN INICIAL
-# -----------------------------------
+# =====================================================
 
 st.set_page_config(
     page_title="Diagnóstico Académico",
     layout="wide"
 )
 
-# -----------------------------------
+# =====================================================
+# FUNCIONES
+# =====================================================
+
+def calcular_horas_autonomas(teoria, laboratorio):
+
+    HT = teoria * 2
+    HL = laboratorio * 1
+
+    return HT + HL
+
+
+def mostrar_ramos(seleccionados, ramos, otros_ramos):
+
+    st.subheader("📖 Ramos")
+
+    for ramo in seleccionados:
+
+        T = ramos[ramo]["T"]
+        L = ramos[ramo]["L"]
+
+        st.write(f"- {ramo} (T{T}, L{L})")
+
+    for ramo in otros_ramos:
+
+        st.write(
+            f"- {ramo['nombre']} (T{ramo['T']}, L{ramo['L']})"
+        )
+
+
+def mostrar_horas_autonomas(seleccionados, ramos, otros_ramos):
+
+    total_horas = 0
+
+    st.subheader("⏰ Horas Autónomas Estimadas")
+
+    for ramo in seleccionados:
+
+        T = ramos[ramo]["T"]
+        L = ramos[ramo]["L"]
+
+        horas = calcular_horas_autonomas(T, L)
+
+        total_horas += horas
+
+        st.write(f"### {ramo}")
+
+        if T > 0:
+            st.write(f"- Teoría: {T * 2} horas")
+
+        if L > 0:
+            st.write(f"- Laboratorio/práctica: {L * 1} horas")
+
+    for ramo in otros_ramos:
+
+        horas = calcular_horas_autonomas(
+            ramo["T"],
+            ramo["L"]
+        )
+
+        total_horas += horas
+
+        st.write(f"### {ramo['nombre']}")
+
+        if ramo["T"] > 0:
+            st.write(f"- Teoría: {ramo['T'] * 2} horas")
+
+        if ramo["L"] > 0:
+            st.write(f"- Laboratorio/práctica: {ramo['L'] * 1} horas")
+
+    st.divider()
+
+    st.write(
+        f"## 📌 Horas autónomas semanales totales: {total_horas} horas"
+    )
+
+    return total_horas
+
+
+def detectar_espacios_libres(bloques):
+
+    dias = [
+        "Lunes",
+        "Martes",
+        "Miércoles",
+        "Jueves",
+        "Viernes",
+        "Sábado",
+        "Domingo"
+    ]
+
+    espacios = []
+
+    inicio_jornada = 8
+    fin_jornada = 22
+
+    for dia in dias:
+
+        actividades = []
+
+        for bloque in bloques:
+
+            if bloque["Día"] == dia:
+
+                inicio = datetime.strptime(
+                    bloque["Inicio"],
+                    "%H:%M:%S"
+                )
+
+                fin = datetime.strptime(
+                    bloque["Fin"],
+                    "%H:%M:%S"
+                )
+
+                actividades.append((inicio, fin))
+
+        actividades.sort()
+
+        tiempo_actual = datetime.strptime(
+            f"{inicio_jornada}:00:00",
+            "%H:%M:%S"
+        )
+
+        fin_dia = datetime.strptime(
+            f"{fin_jornada}:00:00",
+            "%H:%M:%S"
+        )
+
+        for actividad in actividades:
+
+            inicio, fin = actividad
+
+            if inicio > tiempo_actual:
+
+                diferencia = inicio - tiempo_actual
+
+                horas_libres = diferencia.total_seconds() / 3600
+
+                if horas_libres >= 1:
+
+                    espacios.append({
+                        "Día": dia,
+                        "Inicio Libre": str(tiempo_actual.time()),
+                        "Fin Libre": str(inicio.time()),
+                        "Horas libres": round(horas_libres, 1)
+                    })
+
+            if fin > tiempo_actual:
+                tiempo_actual = fin
+
+        if tiempo_actual < fin_dia:
+
+            diferencia = fin_dia - tiempo_actual
+
+            horas_libres = diferencia.total_seconds() / 3600
+
+            if horas_libres >= 1:
+
+                espacios.append({
+                    "Día": dia,
+                    "Inicio Libre": str(tiempo_actual.time()),
+                    "Fin Libre": str(fin_dia.time()),
+                    "Horas libres": round(horas_libres, 1)
+                })
+
+    return espacios
+
+
+# =====================================================
 # TÍTULO
-# -----------------------------------
+# =====================================================
 
 st.title("📚 Diagnóstico Académico para Ingeniería")
 
@@ -25,9 +194,9 @@ Especialmente pensada para estudiantes de ingeniería.
 
 st.divider()
 
-# -----------------------------------
-# PREGUNTA 1 — UNIVERSIDAD
-# -----------------------------------
+# =====================================================
+# CAPA 1 — RECOLECCIÓN DE DATOS
+# =====================================================
 
 st.header("1️⃣ Información Universitaria")
 
@@ -41,25 +210,25 @@ if universidad == "Sí":
     ct = 27
 
     st.success(
-        "Se utilizará automáticamente el sistema SCT ULS (27 horas por crédito)."
+        "Se utilizará automáticamente el sistema SCT ULS."
     )
 
 else:
 
     ct = st.number_input(
-        "Ingrese cuántas horas equivale un crédito transferible en tu universidad:",
+        "Horas equivalentes por crédito transferible:",
         min_value=1,
         max_value=100,
         value=27
     )
 
-st.write(f"📌 Valor actual del crédito transferible: {ct} horas")
+st.write(f"📌 CT actual: {ct} horas")
 
 st.divider()
 
-# -----------------------------------
-# PREGUNTA 2 — MATERIAS
-# -----------------------------------
+# =====================================================
+# MATERIAS
+# =====================================================
 
 st.header("2️⃣ Materias del Semestre")
 
@@ -76,20 +245,20 @@ ramos = {
 }
 
 seleccionados = st.multiselect(
-    "Selecciona las materias que estás cursando:",
+    "Selecciona tus materias:",
     list(ramos.keys())
 )
 
 st.divider()
 
-# -----------------------------------
+# =====================================================
 # OTROS RAMOS
-# -----------------------------------
+# =====================================================
 
 st.header("3️⃣ Agregar Otros Ramos")
 
 cantidad_otros = st.number_input(
-    "¿Cuántos ramos quieres agregar manualmente?",
+    "¿Cuántos ramos adicionales deseas agregar?",
     min_value=0,
     max_value=10,
     step=1
@@ -128,21 +297,11 @@ for i in range(cantidad_otros):
 
 st.divider()
 
-# -----------------------------------
-# BLOQUES SEMANALES
-# -----------------------------------
+# =====================================================
+# CAPA 2 — ORGANIZACIÓN SEMANAL
+# =====================================================
 
 st.header("4️⃣ Organización Semanal")
-
-st.markdown("""
-Agrega actividades de tu semana:
-- clases
-- laboratorios
-- transporte
-- trabajo
-- estudio
-- descanso
-""")
 
 if "bloques" not in st.session_state:
     st.session_state.bloques = []
@@ -181,7 +340,7 @@ with st.form("formulario_bloques"):
     )
 
     materia = st.text_input(
-        "Materia o descripción de la actividad"
+        "Materia o descripción"
     )
 
     agregar = st.form_submit_button("Agregar bloque")
@@ -202,9 +361,9 @@ with st.form("formulario_bloques"):
 
 st.divider()
 
-# -----------------------------------
-# MOSTRAR TABLA
-# -----------------------------------
+# =====================================================
+# MOSTRAR ACTIVIDADES
+# =====================================================
 
 st.header("5️⃣ Resumen de Actividades")
 
@@ -223,13 +382,36 @@ else:
 
 st.divider()
 
-# -----------------------------------
-# GENERAR DIAGNÓSTICO
-# -----------------------------------
+# =====================================================
+# CAPA 3 — DETECCIÓN DE ESPACIOS LIBRES
+# =====================================================
+
+st.header("6️⃣ Espacios Libres Detectados")
+
+espacios = detectar_espacios_libres(
+    st.session_state.bloques
+)
+
+if len(espacios) > 0:
+
+    df_espacios = pd.DataFrame(espacios)
+
+    st.dataframe(
+        df_espacios,
+        use_container_width=True
+    )
+
+else:
+
+    st.warning("No se detectaron espacios libres.")
+
+st.divider()
+
+# =====================================================
+# CAPA 4 — DIAGNÓSTICO
+# =====================================================
 
 if st.button("Generar diagnóstico"):
-
-    st.divider()
 
     st.header("📊 Resultado del Diagnóstico")
 
@@ -238,73 +420,43 @@ if st.button("Generar diagnóstico"):
 
     st.divider()
 
-    st.subheader("📖 Ramos")
-
-    total_horas = 0
-
-    for ramo in seleccionados:
-
-        T = ramos[ramo]["T"]
-        L = ramos[ramo]["L"]
-
-        st.write(f"- {ramo} (T{T}, L{L})")
-
-    for ramo in otros_ramos:
-
-        st.write(
-            f"- {ramo['nombre']} (T{ramo['T']}, L{ramo['L']})"
-        )
+    mostrar_ramos(
+        seleccionados,
+        ramos,
+        otros_ramos
+    )
 
     st.divider()
 
-    st.subheader("⏰ Horas Autónomas Estimadas")
-
-    for ramo in seleccionados:
-
-        T = ramos[ramo]["T"]
-        L = ramos[ramo]["L"]
-
-        HT = T * 2
-        HL = L * 1
-
-        total_horas += HT + HL
-
-        st.write(f"### {ramo}")
-
-        if T > 0:
-            st.write(f"- Teoría: {HT} horas")
-
-        if L > 0:
-            st.write(f"- Laboratorio/práctica: {HL} horas")
-
-    for ramo in otros_ramos:
-
-        HT = ramo["T"] * 2
-        HL = ramo["L"] * 1
-
-        total_horas += HT + HL
-
-        st.write(f"### {ramo['nombre']}")
-
-        if ramo["T"] > 0:
-            st.write(f"- Teoría: {HT} horas")
-
-        if ramo["L"] > 0:
-            st.write(f"- Laboratorio/práctica: {HL} horas")
-
-    st.divider()
-
-    st.write(
-        f"## 📌 Horas autónomas semanales totales: {total_horas} horas"
+    total_horas = mostrar_horas_autonomas(
+        seleccionados,
+        ramos,
+        otros_ramos
     )
 
     st.info(
-        "IMPORTANTE: La cantidad de horas puede parecer alta al principio, "
-        "pero no significa que debas estudiar exactamente esas horas de manera rígida todas las semanas. "
-        "Este diagnóstico entrega una referencia aproximada de dedicación académica según la carga de tus ramos "
-        "y puede ajustarse a tu realidad personal, ritmo de aprendizaje, hábitos de estudio, experiencia previa "
-        "y disponibilidad semanal. El objetivo es ayudarte a visualizar tu carga académica de manera más clara "
-        "y organizada, no asustarte."
-            )
+        "IMPORTANTE: Estas horas son solo una estimación aproximada "
+        "de dedicación académica semanal y pueden variar según "
+        "tu experiencia, hábitos de estudio y dificultad personal."
+    )
+
+# =====================================================
+# CAPA 5 — FUTURO MOTOR INTELIGENTE
+# =====================================================
+
+st.divider()
+
+st.header("🚧 Futuras Funcionalidades")
+
+st.markdown("""
+Próximamente el sistema podrá:
+
+- Detectar sobrecarga académica
+- Recomendar horarios de estudio
+- Analizar fatiga semanal
+- Sugerir descansos
+- Priorizar materias difíciles
+- Generar horarios automáticos
+""")
 
 
