@@ -173,15 +173,5 @@ if agregar_otro:
             "laboratorio": laboratorio_otro
         })
 
-st.header("3. Horas autónomas")
-
-total_horas_autonomas = 0
-
-for ramo in ramos:
-
-    ht = ramo["teoria"] * 2
-    hl = ramo["laboratorio"] * 1
-
-    total = ht + hl
 
     ramo["horas
