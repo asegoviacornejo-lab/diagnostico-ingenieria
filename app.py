@@ -1,10 +1,24 @@
 import streamlit as st
 import pandas as pd
-from datetime import datetime, timedelta, time
+import random
+from collections import defaultdict
 
-st.set_page_config(page_title="Planificador Académico", layout="wide")
+st.set_page_config(
+    page_title="Planificador Académico",
+    layout="wide"
+)
 
-st.title("Planificador Académico Inteligente")
+st.title("Planificador Académico Adaptativo")
+
+st.write("""
+Este sistema:
+- calcula horas autónomas
+- identifica horario ocupado
+- considera responsabilidades
+- considera energía
+- genera múltiples horarios posibles
+- mantiene proporcionalidad entre ramos
+""")
 
 RAMOS = {
     1: ("Introducción al Cálculo", 6, 2),
@@ -26,27 +40,7 @@ RAMOS = {
     17: ("Ecuaciones Diferenciales", 4, 0),
     18: ("Electromagnetismo M2024", 4, 2),
     19: ("Electromagnetismo M2023", 6, 2),
-    20: ("Química General", 4, 2),
-    21: ("Programación para Ingeniería", 0, 4),
-    22: ("Termodinámica", 4, 0),
-    23: ("Probabilidad y Estadística", 4, 0),
-    24: ("Estadística Aplicada", 6, 0),
-    25: ("Óptica y Ondas", 4, 2),
-    26: ("Mecánica", 4, 2),
-    27: ("Mecánica Estática", 6, 0),
-    28: ("Desafío de Proyecto de Ingeniería I", 0, 4),
-    29: ("Inglés para Ingeniería I", 2, 2),
-    30: ("Métodos Numéricos para Ingeniería", 4, 0),
-    31: ("Métodos Numéricos", 6, 0),
-    32: ("Ciencias de Materiales", 4, 2),
-    33: ("Ingeniería de Materiales", 2, 2),
-    34: ("Fundamentos de Economía", 4, 0),
-    35: ("Mecánica de Sólidos M2024", 4, 2),
-    36: ("Mecánica de Sólidos M2023", 6, 0),
-    37: ("Investigación de Operaciones", 4, 0),
-    38: ("Inglés para Ingeniería II", 2, 2),
-    39: ("Filosofía de las Ciencias de la Ingeniería", 4, 0),
-    40: ("Taller de Creatividad", 0, 2)
+    20: ("Química General", 4, 2)
 }
 
 DIAS = [
@@ -59,7 +53,9 @@ DIAS = [
     "Domingo"
 ]
 
-st.header("1. Información general")
+HORAS = list(range(8, 23))
+
+st.header("1. Universidad")
 
 uls = st.radio(
     "¿Eres estudiante de la Universidad de La Serena?",
@@ -69,10 +65,11 @@ uls = st.radio(
 if uls == "Sí":
     universidad = "Universidad de La Serena"
     ct = 27
+
 else:
-    universidad = st.text_input("Universidad")
+    universidad = st.text_input("Nombre universidad")
     ct = st.number_input(
-        "Créditos transferibles",
+        "Cantidad créditos transferibles",
         min_value=1,
         step=1
     )
@@ -80,14 +77,16 @@ else:
 st.header("2. Selección de ramos")
 
 for codigo, datos in RAMOS.items():
+
     nombre, t, l = datos
+
     st.write(f"{codigo}. {nombre}(T{t},L{l})")
 
 seleccion = st.text_input(
-    "Ingresa números separados por coma"
+    "Selecciona números separados por coma"
 )
 
-ramos_finales = []
+ramos = []
 
 if seleccion:
 
@@ -100,11 +99,11 @@ if seleccion:
     for n in numeros:
 
         if n in RAMOS:
-            ramos_finales.append(RAMOS[n])
+            ramos.append(RAMOS[n])
 
 st.header("3. Horario fijo")
 
-cantidad_bloques = st.number_input(
+cantidad_fijos = st.number_input(
     "Cantidad de actividades fijas",
     min_value=0,
     step=1
@@ -112,12 +111,12 @@ cantidad_bloques = st.number_input(
 
 bloques_fijos = []
 
-for i in range(cantidad_bloques):
+for i in range(cantidad_fijos):
 
     st.subheader(f"Actividad fija {i+1}")
 
     nombre = st.text_input(
-        f"Nombre actividad {i+1}",
+        f"Nombre {i+1}",
         key=f"nombre_{i}"
     )
 
@@ -127,15 +126,17 @@ for i in range(cantidad_bloques):
         key=f"dia_{i}"
     )
 
-    inicio = st.time_input(
+    inicio = st.number_input(
         f"Hora inicio {i+1}",
-        value=time(8, 0),
+        min_value=0,
+        max_value=23,
         key=f"inicio_{i}"
     )
 
-    fin = st.time_input(
+    fin = st.number_input(
         f"Hora fin {i+1}",
-        value=time(10, 0),
+        min_value=0,
+        max_value=23,
         key=f"fin_{i}"
     )
 
@@ -146,39 +147,53 @@ for i in range(cantidad_bloques):
         "fin": fin
     })
 
-st.header("4. Energía")
+st.header("4. Responsabilidades personales")
 
-energia_usuario = {}
+responsabilidad = st.selectbox(
+    "Nivel de responsabilidades personales/familiares",
+    ["Baja", "Media", "Alta"]
+)
+
+st.header("5. Energía")
+
+energia = {}
 
 for dia in DIAS:
 
-    energia_usuario[dia] = st.selectbox(
+    energia[dia] = st.selectbox(
         f"Energía predominante {dia}",
         ["Alta", "Media", "Baja"],
         key=f"energia_{dia}"
     )
 
-st.header("5. Restricciones")
+st.header("6. Restricciones")
 
-descanso_minimo = st.number_input(
+descanso = st.number_input(
     "Horas mínimas entre bloques de estudio",
     min_value=1,
-    max_value=8,
+    max_value=6,
     value=2
 )
 
-duracion_bloque = st.number_input(
-    "Duración de bloques de estudio (horas)",
+maximo_diario = st.number_input(
+    "Máximo horas de estudio por día",
     min_value=1,
-    max_value=4,
-    value=2
+    max_value=12,
+    value=6
 )
 
-st.header("6. Generar calendario")
+cantidad_horarios = st.slider(
+    "Cantidad de horarios a generar",
+    1,
+    10,
+    3
+)
 
-def calcular_horas_autonomas(ramos):
+def calcular_horas(ramos):
 
-    resultado = []
+    datos = []
+
+    total = 0
 
     for ramo in ramos:
 
@@ -187,175 +202,194 @@ def calcular_horas_autonomas(ramos):
         ht = t * 2
         hl = l * 1
 
-        total = ht + hl
+        horas = ht + hl
 
-        resultado.append({
+        datos.append({
             "ramo": nombre,
-            "horas": total
+            "horas_originales": horas
         })
 
-    return resultado
+        total += horas
 
-def convertir_a_datetime(hora):
+    return datos, total
 
-    return datetime.combine(datetime.today(), hora)
+def ajustar_por_responsabilidad(datos):
 
-def bloque_ocupado(dia, inicio, fin, bloques):
+    factor = 1.0
 
-    for bloque in bloques:
+    if responsabilidad == "Media":
+        factor = 0.85
 
-        if bloque["dia"] != dia:
-            continue
+    elif responsabilidad == "Alta":
+        factor = 0.70
 
-        b_inicio = convertir_a_datetime(bloque["inicio"])
-        b_fin = convertir_a_datetime(bloque["fin"])
+    for d in datos:
 
-        if inicio < b_fin and fin > b_inicio:
-            return True
+        nuevas = round(
+            d["horas_originales"] * factor
+        )
+
+        if nuevas < 1:
+            nuevas = 1
+
+        d["horas_ajustadas"] = nuevas
+
+    return datos
+
+def ocupado(dia, hora, calendario):
+
+    for bloque in calendario:
+
+        if bloque["dia"] == dia:
+
+            if hora >= bloque["inicio"] and hora < bloque["fin"]:
+                return True
 
     return False
 
-def generar_bloques_estudio(
-    horas_autonomas,
-    bloques_fijos,
-    descanso_minimo,
-    duracion_bloque
-):
+def generar_horario(datos):
 
     calendario = []
 
-    horas_inicio = 8
-    horas_fin = 22
+    for b in bloques_fijos:
+        calendario.append(b)
 
-    for ramo in horas_autonomas:
+    horas_dia = defaultdict(int)
+
+    for ramo in datos:
 
         nombre = ramo["ramo"]
-        horas_restantes = ramo["horas"]
 
-        for dia in DIAS:
+        horas_restantes = ramo["horas_ajustadas"]
 
-            hora_actual = horas_inicio
+        intentos = 0
 
-            while hora_actual < horas_fin and horas_restantes > 0:
+        while horas_restantes > 0 and intentos < 500:
 
-                inicio = datetime.combine(
-                    datetime.today(),
-                    time(hora_actual, 0)
-                )
+            intentos += 1
 
-                fin = inicio + timedelta(hours=duracion_bloque)
+            dia = random.choice(DIAS)
 
-                ocupado = bloque_ocupado(
-                    dia,
-                    inicio,
-                    fin,
-                    bloques_fijos
-                )
+            hora = random.choice(HORAS[:-1])
 
-                if not ocupado:
+            energia_dia = energia[dia]
 
-                    calendario.append({
-                        "Día": dia,
-                        "Inicio": inicio.strftime("%H:%M"),
-                        "Fin": fin.strftime("%H:%M"),
-                        "Actividad": f"Estudio - {nombre}"
-                    })
+            if energia_dia == "Baja" and hora >= 20:
+                continue
 
-                    bloques_fijos.append({
-                        "nombre": f"Estudio - {nombre}",
-                        "dia": dia,
-                        "inicio": inicio.time(),
-                        "fin": fin.time()
-                    })
+            if horas_dia[dia] >= maximo_diario:
+                continue
 
-                    horas_restantes -= duracion_bloque
+            conflicto = False
 
-                    hora_actual += duracion_bloque + descanso_minimo
+            for h in range(
+                hora - descanso,
+                hora + descanso + 1
+            ):
 
-                else:
-                    hora_actual += 1
+                if ocupado(dia, h, calendario):
+                    conflicto = True
+                    break
+
+            if conflicto:
+                continue
+
+            calendario.append({
+                "nombre": f"Estudio - {nombre}",
+                "dia": dia,
+                "inicio": hora,
+                "fin": hora + 1
+            })
+
+            horas_dia[dia] += 1
+            horas_restantes -= 1
 
     return calendario
 
-if st.button("Generar calendario"):
+if st.button("Generar horarios"):
 
-    horas_autonomas = calcular_horas_autonomas(ramos_finales)
+    datos, total_original = calcular_horas(ramos)
 
-    calendario = generar_bloques_estudio(
-        horas_autonomas,
-        bloques_fijos,
-        descanso_minimo,
-        duracion_bloque
-    )
+    datos = ajustar_por_responsabilidad(datos)
 
-    st.header("Resumen")
+    st.header("Resumen académico")
 
     st.write(f"Universidad: {universidad}")
     st.write(f"CT: {ct}")
 
     st.subheader("Ramos")
 
-    for ramo in ramos_finales:
+    for d in datos:
 
-        nombre, t, l = ramo
-
-        st.write(f"- {nombre}(T{t},L{l})")
-
-    st.subheader("Horas autónomas")
-
-    total = 0
-
-    for ramo in ramos_finales:
-
-        nombre, t, l = ramo
-
-        st.write(nombre)
-
-        if t > 0:
-
-            ht = t * 2
-            total += ht
-
-            st.write(f"- Teoría: {ht} horas")
-
-        if l > 0:
-
-            hl = l * 1
-            total += hl
-
-            st.write(f"- Laboratorio/práctica: {hl} horas")
-
-    st.write(f"Horas autónomas semanales totales: {total} horas")
-
-    st.header("Calendario generado")
-
-    if calendario:
-
-        df = pd.DataFrame(calendario)
-
-        st.dataframe(
-            df,
-            use_container_width=True
+        st.write(
+            f"- {d['ramo']} | "
+            f"Horas originales: {d['horas_originales']} | "
+            f"Horas ajustadas: {d['horas_ajustadas']}"
         )
 
-    else:
+    st.subheader("Responsabilidades")
 
-        st.warning(
-            "No se pudieron generar bloques."
-        )
+    st.write(
+        f"Nivel seleccionado: {responsabilidad}"
+    )
 
-    st.header("Energía semanal")
+    st.subheader("Horarios generados")
 
-    for dia, energia in energia_usuario.items():
+    for i in range(cantidad_horarios):
 
-        st.write(f"{dia}: {energia}")
+        st.markdown(f"## Horario {i+1}")
+
+        calendario = generar_horario(datos)
+
+        filas = []
+
+        for bloque in calendario:
+
+            filas.append({
+                "Día": bloque["dia"],
+                "Inicio": f"{bloque['inicio']}:00",
+                "Fin": f"{bloque['fin']}:00",
+                "Actividad": bloque["nombre"]
+            })
+
+        df = pd.DataFrame(filas)
+
+        if not df.empty:
+
+            orden_dias = {
+                "Lunes": 0,
+                "Martes": 1,
+                "Miércoles": 2,
+                "Jueves": 3,
+                "Viernes": 4,
+                "Sábado": 5,
+                "Domingo": 6
+            }
+
+            df["orden"] = df["Día"].map(orden_dias)
+
+            df = df.sort_values(
+                by=["orden", "Inicio"]
+            )
+
+            df = df.drop(columns=["orden"])
+
+            st.dataframe(
+                df,
+                use_container_width=True
+            )
 
     st.write("""
-IMPORTANTE: La cantidad de horas puede parecer alta al principio, pero no significa que debas estudiar exactamente esas horas de manera rígida todas las semanas.
+IMPORTANTE:
+Los horarios generados son alternativas posibles que cumplen las restricciones ingresadas por el estudiante.
 
-Este diagnóstico entrega una referencia aproximada de dedicación académica según la carga de tus ramos y puede ajustarse a tu realidad personal, ritmo de aprendizaje, hábitos de estudio, experiencia previa y disponibilidad semanal.
+Las horas autónomas pueden ajustarse según:
+- disponibilidad real
+- energía
+- responsabilidades personales
+- carga académica
 
-El objetivo es ayudarte a visualizar tu carga académica de manera más clara y organizada, no asustarte.
-""")
+El objetivo es entregar distintas opciones para que el estudiante pueda elegir la que mejor se adapte a su realidad.
+""") 
 
 
