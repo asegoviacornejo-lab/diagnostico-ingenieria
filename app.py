@@ -174,4 +174,3 @@ if agregar_otro:
         })
 
 
-    ramo["horas
