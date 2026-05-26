@@ -244,130 +244,51 @@ for ramo in ramos:
         "permite_estudio": False,
         "descanso": False
     }
-
-# ==================================================
-# 4. ENERGÍA GENERAL
-# ==================================================
-
-st.header("4. Energía durante el día")
-
-energia = {}
-
-columnas = st.columns(3)
-
-for i, hora in enumerate(range(6, 24)):
-
-    with columnas[i % 3]:
-
-        energia[hora] = st.slider(
-            f"{hora}:00",
-            1,
-            5,
-            3
-        )
-
-# ==================================================
-# 5. SUEÑO
-# ==================================================
-
-st.header("5. Horario de sueño")
-
-hora_dormir = st.slider(
-    "Hora de dormir",
-    0,
-    23,
-    23
-)
-
-hora_despertar = st.slider(
-    "Hora de despertar",
-    0,
-    23,
-    7
-)
-
-horas_sueno = []
-
-if hora_dormir > hora_despertar:
-
-    for h in range(hora_dormir, 24):
-        horas_sueno.append(h)
-
-    for h in range(0, hora_despertar):
-        horas_sueno.append(h)
-
-else:
-
-    for h in range(hora_dormir, hora_despertar):
-        horas_sueno.append(h)
-
-# ==================================================
-# 6. AGENDA SEMANAL
-# ==================================================
-
-st.header("6. Agenda semanal")
+st.subheader("Crear actividades personalizadas")
 
 st.write("""
-Completa tu semana seleccionando actividades.
+Agrega actividades importantes de tu rutina
+y define cuánto desgaste mental o físico generan.
 """)
 
-opciones = list(ACTIVIDADES.keys())
-
-agenda = pd.DataFrame(
-    "Libre",
-    index=[f"{h}:00" for h in HORAS],
-    columns=DIAS
+cantidad_actividades = st.number_input(
+    "¿Cuántas actividades quieres agregar?",
+    min_value=1,
+    max_value=20,
+    value=3
 )
 
-for hora in horas_sueno:
+for i in range(cantidad_actividades):
 
-    agenda.loc[f"{hora}:00"] = "Dormir"
+    st.markdown(f"### Actividad {i+1}")
 
-agenda_final = st.data_editor(
-    agenda,
-    use_container_width=True,
-    column_config={
-        dia: st.column_config.SelectboxColumn(
-            dia,
-            options=opciones + ["Dormir"]
-        )
-        for dia in DIAS
-    }
-)
+    nombre_actividad = st.text_input(
+        "Nombre de la actividad",
+        key=f"nombre_{i}"
+    )
 
-# ==================================================
-# 7. DETECTAR BLOQUES DISPONIBLES
-# ==================================================
+    energia_actividad = st.slider(
+        "Nivel de desgaste",
+        min_value=-5,
+        max_value=5,
+        value=0,
+        key=f"energia_{i}"
+    )
 
-st.header("7. Disponibilidad detectada")
+    permite_estudio = st.checkbox(
+        "Permite estudio ligero",
+        key=f"estudio_{i}"
+    )
 
-bloques_disponibles = []
+    recupera = st.checkbox(
+        "Ayuda a recuperar energía",
+        key=f"recupera_{i}"
+    )
 
-for dia in DIAS:
+    if nombre_actividad.strip() != "":
 
-    for hora in HORAS:
-
-        actividad = agenda_final.loc[f"{hora}:00", dia]
-
-        energia_hora = energia.get(hora, 1)
-
-        if actividad == "Libre" and energia_hora >= 2:
-
-            bloques_disponibles.append({
-                "día": dia,
-                "hora": hora,
-                "energía": energia_hora
-            })
-
-        elif actividad == "Transporte":
-
-            bloques_disponibles.append({
-                "día": dia,
-                "hora": hora,
-                "energía": energia_hora,
-                "tipo": "Estudio ligero"
-            })
-
-st.success(
-    f"Se detectaron {len(bloques_disponibles)} bloques potenciales de estudio."
-)
+        ACTIVIDADES[nombre_actividad] = {
+            "energia": energia_actividad,
+            "permite_estudio": permite_estudio,
+            "recupera": recupera
+        }
