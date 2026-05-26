@@ -224,3 +224,81 @@ for i, hora in enumerate(horas_utiles):
             max_value=5,
             value=3
         )
+st.header("5. Sueño y horarios no utilizables")
+
+st.write("""
+Configura tus horarios normales de sueño.
+El sistema evitará asignar estudio en esas horas.
+""")
+
+hora_dormir = st.slider(
+    "¿A qué hora sueles dormir?",
+    min_value=0,
+    max_value=23,
+    value=23
+)
+
+hora_despertar = st.slider(
+    "¿A qué hora sueles despertar?",
+    min_value=0,
+    max_value=23,
+    value=7
+)
+
+# Crear lista de horas bloqueadas por sueño
+
+horas_sueno = []
+
+if hora_dormir > hora_despertar:
+
+    for h in range(hora_dormir, 24):
+        horas_sueno.append(h)
+
+    for h in range(0, hora_despertar):
+        horas_sueno.append(h)
+
+else:
+
+    for h in range(hora_dormir, hora_despertar):
+        horas_sueno.append(h)
+
+st.subheader("Horas bloqueadas automáticamente")
+
+st.write(horas_sueno)
+st.header("6. Bloques disponibles")
+
+bloques_libres = []
+
+for dia in DIAS:
+
+    for hora in HORAS:
+
+        ocupado = horario_ocupado.loc[hora, dia]
+
+        # Verificar sueño
+        en_sueno = hora in horas_sueno
+
+        # Verificar energía mínima
+        energia_actual = energia.get(hora, 1)
+
+        if (
+            not ocupado
+            and not en_sueno
+            and energia_actual >= 2
+        ):
+
+            bloques_libres.append({
+                "día": dia,
+                "hora": hora,
+                "energía": energia_actual
+            })
+
+st.subheader("Cantidad de bloques libres")
+
+st.write(len(bloques_libres))
+
+st.subheader("Vista previa")
+
+st.dataframe(
+    pd.DataFrame(bloques_libres)
+)
