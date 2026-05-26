@@ -199,3 +199,28 @@ horario_ocupado = st.data_editor(
 )
 
 st.write("True = ocupado / False = libre")
+st.header("4. Energía y rendimiento")
+
+st.write("""
+Indica cómo suele ser tu energía durante el día.
+
+1 = Muy baja energía  
+5 = Máxima concentración
+""")
+
+energia = {}
+
+columnas = st.columns(3)
+
+horas_utiles = list(range(6, 24))
+
+for i, hora in enumerate(horas_utiles):
+
+    with columnas[i % 3]:
+
+        energia[hora] = st.slider(
+            f"{hora}:00",
+            min_value=1,
+            max_value=5,
+            value=3
+        )
