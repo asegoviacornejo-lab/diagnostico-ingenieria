@@ -172,80 +172,119 @@ if agregar_otro:
             "teoria": teoria_otro,
             "laboratorio": laboratorio_otro
         })
-st.header("3. Horario ocupado")
+
+# ==================================================
+# 3. ACTIVIDADES PERSONALES
+# ==================================================
+
+st.header("3. Actividades y responsabilidades")
 
 st.write("""
-Marca los bloques horarios que ya están ocupados:
-- clases
-- trabajo
-- traslado
-- responsabilidades
-- otras actividades
+Selecciona las actividades que forman parte de tu rutina.
 """)
 
-# Crear tabla vacía
+ACTIVIDADES = {
+    "Clase": {
+        "energia": 2,
+        "permite_estudio": False,
+        "descanso": False
+    },
 
-horario_base = pd.DataFrame(
-    False,
-    index=HORAS,
-    columns=DIAS
-)
+    "Trabajo": {
+        "energia": 5,
+        "permite_estudio": False,
+        "descanso": False
+    },
 
-# Editor interactivo
+    "Transporte": {
+        "energia": 2,
+        "permite_estudio": True,
+        "descanso": False
+    },
 
-horario_ocupado = st.data_editor(
-    horario_base,
-    use_container_width=True
-)
+    "Descanso": {
+        "energia": -2,
+        "permite_estudio": False,
+        "descanso": True
+    },
 
-st.write("True = ocupado / False = libre")
-st.header("4. Energía y rendimiento")
+    "Gimnasio": {
+        "energia": 4,
+        "permite_estudio": False,
+        "descanso": False
+    },
 
-st.write("""
-Indica cómo suele ser tu energía durante el día.
+    "Tiempo personal": {
+        "energia": 1,
+        "permite_estudio": False,
+        "descanso": True
+    },
 
-1 = Muy baja energía  
-5 = Máxima concentración
-""")
+    "Almuerzo": {
+        "energia": 1,
+        "permite_estudio": False,
+        "descanso": True
+    },
+
+    "Libre": {
+        "energia": 0,
+        "permite_estudio": False,
+        "descanso": False
+    }
+}
+
+# ==================================================
+# AGREGAR RAMOS COMO ACTIVIDADES
+# ==================================================
+
+for ramo in ramos:
+
+    ACTIVIDADES[ramo["nombre"]] = {
+        "energia": 3,
+        "permite_estudio": False,
+        "descanso": False
+    }
+
+# ==================================================
+# 4. ENERGÍA GENERAL
+# ==================================================
+
+st.header("4. Energía durante el día")
 
 energia = {}
 
 columnas = st.columns(3)
 
-horas_utiles = list(range(6, 24))
-
-for i, hora in enumerate(horas_utiles):
+for i, hora in enumerate(range(6, 24)):
 
     with columnas[i % 3]:
 
         energia[hora] = st.slider(
             f"{hora}:00",
-            min_value=1,
-            max_value=5,
-            value=3
+            1,
+            5,
+            3
         )
-st.header("5. Sueño y horarios no utilizables")
 
-st.write("""
-Configura tus horarios normales de sueño.
-El sistema evitará asignar estudio en esas horas.
-""")
+# ==================================================
+# 5. SUEÑO
+# ==================================================
+
+st.header("5. Horario de sueño")
 
 hora_dormir = st.slider(
-    "¿A qué hora sueles dormir?",
-    min_value=0,
-    max_value=23,
-    value=23
+    "Hora de dormir",
+    0,
+    23,
+    23
 )
 
 hora_despertar = st.slider(
-    "¿A qué hora sueles despertar?",
-    min_value=0,
-    max_value=23,
-    value=7
+    "Hora de despertar",
+    0,
+    23,
+    7
 )
-
-# Crear lista de horas bloqueadas por sueño
 
 horas_sueno = []
 
@@ -262,90 +301,73 @@ else:
     for h in range(hora_dormir, hora_despertar):
         horas_sueno.append(h)
 
-st.subheader("Horas bloqueadas automáticamente")
+# ==================================================
+# 6. AGENDA SEMANAL
+# ==================================================
 
-st.write(horas_sueno)
-st.header("6. Bloques disponibles")
+st.header("6. Agenda semanal")
 
-bloques_libres = []
+st.write("""
+Completa tu semana seleccionando actividades.
+""")
+
+opciones = list(ACTIVIDADES.keys())
+
+agenda = pd.DataFrame(
+    "Libre",
+    index=[f"{h}:00" for h in HORAS],
+    columns=DIAS
+)
+
+for hora in horas_sueno:
+
+    agenda.loc[f"{hora}:00"] = "Dormir"
+
+agenda_final = st.data_editor(
+    agenda,
+    use_container_width=True,
+    column_config={
+        dia: st.column_config.SelectboxColumn(
+            dia,
+            options=opciones + ["Dormir"]
+        )
+        for dia in DIAS
+    }
+)
+
+# ==================================================
+# 7. DETECTAR BLOQUES DISPONIBLES
+# ==================================================
+
+st.header("7. Disponibilidad detectada")
+
+bloques_disponibles = []
 
 for dia in DIAS:
 
     for hora in HORAS:
 
-        ocupado = horario_ocupado.loc[hora, dia]
+        actividad = agenda_final.loc[f"{hora}:00", dia]
 
-        # Verificar sueño
-        en_sueno = hora in horas_sueno
+        energia_hora = energia.get(hora, 1)
 
-        # Verificar energía mínima
-        energia_actual = energia.get(hora, 1)
+        if actividad == "Libre" and energia_hora >= 2:
 
-        if (
-            not ocupado
-            and not en_sueno
-            and energia_actual >= 2
-        ):
-
-            bloques_libres.append({
+            bloques_disponibles.append({
                 "día": dia,
                 "hora": hora,
-                "energía": energia_actual
+                "energía": energia_hora
             })
 
-st.subheader("Cantidad de bloques libres")
+        elif actividad == "Transporte":
 
-st.write(len(bloques_libres))
+            bloques_disponibles.append({
+                "día": dia,
+                "hora": hora,
+                "energía": energia_hora,
+                "tipo": "Estudio ligero"
+            })
 
-st.subheader("Vista previa")
-
-st.dataframe(
-    pd.DataFrame(bloques_libres)
+st.success(
+    f"Se detectaron {len(bloques_disponibles)} bloques potenciales de estudio."
 )
-st.header("6. Ajuste de disponibilidad")
-
-st.write("""
-El sistema detectó bloques posibles para estudiar.
-Desmarca los horarios donde:
-- necesites descanso
-- tengas transporte
-- quieras tiempo personal
-- tengas otras responsabilidades
-""")
-
-bloques_estudio = {}
-
-for dia in DIAS:
-
-    st.subheader(dia)
-
-    columnas = st.columns(4)
-
-    contador = 0
-
-    for hora in range(6, 24):
-
-        ocupado = horario_ocupado.loc[hora, dia]
-
-        en_sueno = hora in horas_sueno
-
-        energia_actual = energia.get(hora, 1)
-
-        disponible = (
-            not ocupado
-            and not en_sueno
-            and energia_actual >= 2
-        )
-
-        if disponible:
-
-            with columnas[contador % 4]:
-
-                clave = f"{dia}_{hora}"
-
-                bloques_estudio[clave] = st.checkbox(
-                    f"{hora}:00 - {hora+1}:00",
-                    value=True
-                )
-
-            contador += 1
