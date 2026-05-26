@@ -177,19 +177,50 @@ if agregar_otro:
 # 3. ACTIVIDADES PERSONALES
 # ==================================================
 
+st.header("3. Actividades y responsabilidades")
+
+ACTIVIDADES = {
+
+    "Dormir": {
+        "energia": -5,
+        "permite_estudio": False,
+        "recupera": True
+    },
+
+    "Descanso": {
+        "energia": -2,
+        "permite_estudio": False,
+        "recupera": True
+    },
+
+    "Transporte": {
+        "energia": 2,
+        "permite_estudio": True,
+        "recupera": False
+    },
+
+    "Libre": {
+        "energia": 0,
+        "permite_estudio": False,
+        "recupera": False
+    }
+}
+
+# Agregar ramos automáticamente como actividades
 
 for ramo in ramos:
 
     ACTIVIDADES[ramo["nombre"]] = {
         "energia": 3,
         "permite_estudio": False,
-        "descanso": False
+        "recupera": False
     }
+
 st.subheader("Crear actividades personalizadas")
 
 st.write("""
 Agrega actividades importantes de tu rutina
-y define cuánto desgaste mental o físico generan.
+y define cuánto desgaste generan.
 """)
 
 cantidad_actividades = st.number_input(
@@ -215,26 +246,10 @@ for i in range(cantidad_actividades):
         value=0,
         key=f"energia_{i}"
     )
-  for i in range(cantidad_actividades):
-
-    st.markdown(f"### Actividad {i+1}")
-
-    nombre_actividad = st.text_input(
-        "Nombre de la actividad",
-        key=f"nombre_{i}"
-    )
-
-    energia_actividad = st.slider(
-        "Nivel de desgaste",
-        min_value=-5,
-        max_value=5,
-        value=0,
-        key=f"energia_{i}"
-    )
 
     if nombre_actividad.strip() != "":
 
-        # El sistema deduce automáticamente
+        # El sistema interpreta automáticamente
 
         permite_estudio = (
             energia_actividad <= 2
@@ -250,7 +265,7 @@ for i in range(cantidad_actividades):
             "recupera": recupera
         }
 
-        # Mostrar interpretación automática
+        # Feedback visual
 
         if energia_actividad >= 4:
 
