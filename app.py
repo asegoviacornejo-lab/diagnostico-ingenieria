@@ -190,10 +190,9 @@ de tu rutina diaria.
 
 ACTIVIDADES = {}
 
-# Ramos seleccionados
+# Agregar ramos seleccionados como actividades
 
 for ramo in ramos:
-
     ACTIVIDADES[ramo["nombre"]] = {
         "desgaste": 3,
         "compatibilidad": 1
@@ -201,15 +200,9 @@ for ramo in ramos:
 
 # Actividades base automáticas
 
-actividades_base = [
-    "Dormir",
-    "Transporte",
-    "Tiempo personal",
-    "Descanso"
-]
+actividades_base = ["Dormir", "Transporte", "Tiempo personal", "Descanso"]
 
 for actividad in actividades_base:
-
     ACTIVIDADES[actividad] = {
         "desgaste": 2,
         "compatibilidad": 2
@@ -238,42 +231,37 @@ for i in range(cantidad_actividades):
     )
 
     if nombre_actividad.strip() != "":
-
         ACTIVIDADES[nombre_actividad] = {
             "desgaste": 2,
             "compatibilidad": 2
         }
 
 # ==================================================
-# CONFIGURAR ACTIVIDADES
+# CONFIGURACIÓN FINAL
 # ==================================================
 
 st.subheader("Personaliza tus actividades")
 
-for nombre in ACTIVIDADES.keys():
+for nombre in list(ACTIVIDADES.keys()):
 
     st.markdown(f"## {nombre}")
 
     col1, col2 = st.columns(2)
 
     with col1:
-
         desgaste = st.slider(
             "¿Cuánta energía consume?",
-            min_value=0,
-            max_value=5,
-            value=ACTIVIDADES[nombre]["desgaste"],
+            0, 5,
+            ACTIVIDADES[nombre]["desgaste"],
             key=f"desgaste_{nombre}"
         )
 
     with col2:
-
         compatibilidad = st.slider(
             "¿Qué tan compatible es con estudiar?",
-            min_value=0,
-            max_value=5,
-            value=ACTIVIDADES[nombre]["compatibilidad"],
-            key=f"compatibilidad_{nombre}"
+            0, 5,
+            ACTIVIDADES[nombre]["compatibilidad"],
+            key=f"compat_{nombre}"
         )
 
     ACTIVIDADES[nombre]["desgaste"] = desgaste
@@ -282,41 +270,15 @@ for nombre in ACTIVIDADES.keys():
     # Interpretación automática
 
     if desgaste >= 4:
-
-        st.warning(
-            "Esta actividad genera mucho desgaste."
-        )
-
+        st.warning("Actividad de alto desgaste.")
     elif desgaste >= 2:
-
-        st.info(
-            "Esta actividad genera desgaste moderado."
-        )
-
+        st.info("Actividad de desgaste moderado.")
     else:
-
-        st.success(
-            "Esta actividad genera poco desgaste."
-        )
+        st.success("Actividad ligera.")
 
     if compatibilidad >= 4:
-
-        st.success(
-            "Muy compatible con estudio."
-        )
-
+        st.success("Muy compatible con estudio.")
     elif compatibilidad >= 2:
-
-        st.info(
-            "Compatible con estudio ligero."
-        )
-
+        st.info("Compatible con estudio ligero.")
     else:
-
-        st.warning(
-            "Difícil estudiar durante esta actividad."
-        )
-
-            st.success(
-                "Actividad ligera."
-            )
+        st.warning("Difícil estudiar durante esta actividad.")
