@@ -177,65 +177,6 @@ if agregar_otro:
 # 3. ACTIVIDADES PERSONALES
 # ==================================================
 
-st.header("3. Actividades y responsabilidades")
-
-st.write("""
-Selecciona las actividades que forman parte de tu rutina.
-""")
-
-ACTIVIDADES = {
-    "Clase": {
-        "energia": 2,
-        "permite_estudio": False,
-        "descanso": False
-    },
-
-    "Trabajo": {
-        "energia": 5,
-        "permite_estudio": False,
-        "descanso": False
-    },
-
-    "Transporte": {
-        "energia": 2,
-        "permite_estudio": True,
-        "descanso": False
-    },
-
-    "Descanso": {
-        "energia": -2,
-        "permite_estudio": False,
-        "descanso": True
-    },
-
-    "Gimnasio": {
-        "energia": 4,
-        "permite_estudio": False,
-        "descanso": False
-    },
-
-    "Tiempo personal": {
-        "energia": 1,
-        "permite_estudio": False,
-        "descanso": True
-    },
-
-    "Almuerzo": {
-        "energia": 1,
-        "permite_estudio": False,
-        "descanso": True
-    },
-
-    "Libre": {
-        "energia": 0,
-        "permite_estudio": False,
-        "descanso": False
-    }
-}
-
-# ==================================================
-# AGREGAR RAMOS COMO ACTIVIDADES
-# ==================================================
 
 for ramo in ramos:
 
@@ -254,7 +195,7 @@ y define cuánto desgaste mental o físico generan.
 cantidad_actividades = st.number_input(
     "¿Cuántas actividades quieres agregar?",
     min_value=1,
-    max_value=20,
+    max_value=12,
     value=3
 )
 
@@ -275,20 +216,63 @@ for i in range(cantidad_actividades):
         key=f"energia_{i}"
     )
 
-    permite_estudio = st.checkbox(
-        "Permite estudio ligero",
-        key=f"estudio_{i}"
+  for i in range(cantidad_actividades):
+
+    st.markdown(f"### Actividad {i+1}")
+
+    nombre_actividad = st.text_input(
+        "Nombre de la actividad",
+        key=f"nombre_{i}"
     )
 
-    recupera = st.checkbox(
-        "Ayuda a recuperar energía",
-        key=f"recupera_{i}"
+    energia_actividad = st.slider(
+        "Nivel de desgaste",
+        min_value=-5,
+        max_value=5,
+        value=0,
+        key=f"energia_{i}"
     )
 
     if nombre_actividad.strip() != "":
+
+        # El sistema deduce automáticamente
+
+        permite_estudio = (
+            energia_actividad <= 2
+        )
+
+        recupera = (
+            energia_actividad < 0
+        )
 
         ACTIVIDADES[nombre_actividad] = {
             "energia": energia_actividad,
             "permite_estudio": permite_estudio,
             "recupera": recupera
         }
+
+        # Mostrar interpretación automática
+
+        if energia_actividad >= 4:
+
+            st.warning(
+                "Actividad de alto desgaste."
+            )
+
+        elif energia_actividad >= 2:
+
+            st.info(
+                "Actividad de desgaste moderado."
+            )
+
+        elif energia_actividad >= 0:
+
+            st.success(
+                "Actividad ligera."
+            )
+
+        else:
+
+            st.success(
+                "Actividad recuperadora."
+            )
