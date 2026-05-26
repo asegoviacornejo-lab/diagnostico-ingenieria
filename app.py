@@ -172,5 +172,58 @@ if agregar_otro:
             "teoria": teoria_otro,
             "laboratorio": laboratorio_otro
         })
+        horario_ocupado = pd.DataFrame(
+    False,
+    index=HORAS,
+    columns=DIAS
+)
+        st.data_editor()
+    st.header("3. Horario ocupado")
+
+horario_ocupado = st.data_editor(
+    horario_ocupado,
+    use_container_width=True
+)
+energia = {}
+
+for hora in range(6, 24):
+
+    energia[hora] = st.slider(
+        f"Energía a las {hora}:00",
+        1,
+        5,
+        3
+    )
+horas_autonomas = (
+    teoria * 1.5
+    + laboratorio * 0.5
+)
+horas_totales = ct * 27
+horas_clases = teoria + laboratorio
+horas_autonomas = horas_totales - horas_clases
+bloques_libres = []
+
+for dia in DIAS:
+
+    for hora in HORAS:
+
+        ocupado = horario_ocupado.loc[hora, dia]
+
+        if not ocupado:
+
+            bloques_libres.append((dia, hora))
+def calcular_horas_autonomas():
+    pass
+
+def obtener_bloques_libres():
+    pass
+
+def distribuir_ramos():
+    pass
+
+def generar_horario():
+    pass
+
+
 
 
