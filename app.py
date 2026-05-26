@@ -179,16 +179,25 @@ if agregar_otro:
 
 st.header("3. Actividades y responsabilidades")
 
-ACTIVIDADES = {
+# Diccionario base
 
-# Agregar ramos automáticamente como actividades
+ACTIVIDADES = {
+    "Transporte": {
+        "energia": 2,
+        "permite_estudio": True
+    }
+}
+
+# Agregar ramos automáticamente
 
 for ramo in ramos:
 
-  ACTIVIDADES[ramo["nombre"]] = {
-    "energia": 3,
-    "permite_estudio": False
-}
+    ACTIVIDADES[ramo["nombre"]] = {
+        "energia": 3,
+        "permite_estudio": False
+    }
+
+# Crear actividades personalizadas
 
 st.subheader("Crear actividades personalizadas")
 
@@ -217,39 +226,39 @@ for i in range(cantidad_actividades):
         "Nivel de desgaste",
         min_value=0,
         max_value=5,
-        value=0,
+        value=2,
         key=f"energia_{i}"
     )
 
-   if nombre_actividad.strip() != "":
+    if nombre_actividad.strip() != "":
 
-    # El sistema interpreta automáticamente
+        # El sistema interpreta automáticamente
 
-    permite_estudio = (
-        energia_actividad <= 2
-    )
-
-    ACTIVIDADES[nombre_actividad] = {
-        "energia": energia_actividad,
-        "permite_estudio": permite_estudio
-    }
-
-    # Interpretación visual
-
-    if energia_actividad >= 4:
-
-        st.warning(
-            "Actividad muy agotadora."
+        permite_estudio = (
+            energia_actividad <= 2
         )
 
-    elif energia_actividad >= 2:
+        ACTIVIDADES[nombre_actividad] = {
+            "energia": energia_actividad,
+            "permite_estudio": permite_estudio
+        }
 
-        st.info(
-            "Actividad de desgaste moderado."
-        )
+        # Feedback visual
 
-    else:
+        if energia_actividad >= 4:
 
-        st.success(
-            "Actividad ligera."
-        )
+            st.warning(
+                "Actividad muy agotadora."
+            )
+
+        elif energia_actividad >= 2:
+
+            st.info(
+                "Actividad de desgaste moderado."
+            )
+
+        else:
+
+            st.success(
+                "Actividad ligera."
+            )
