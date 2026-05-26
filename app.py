@@ -215,7 +215,6 @@ for i in range(cantidad_actividades):
         value=0,
         key=f"energia_{i}"
     )
-
   for i in range(cantidad_actividades):
 
     st.markdown(f"### Actividad {i+1}")
