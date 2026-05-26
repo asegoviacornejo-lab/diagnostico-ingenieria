@@ -302,3 +302,50 @@ st.subheader("Vista previa")
 st.dataframe(
     pd.DataFrame(bloques_libres)
 )
+st.header("6. Ajuste de disponibilidad")
+
+st.write("""
+El sistema detectó bloques posibles para estudiar.
+Desmarca los horarios donde:
+- necesites descanso
+- tengas transporte
+- quieras tiempo personal
+- tengas otras responsabilidades
+""")
+
+bloques_estudio = {}
+
+for dia in DIAS:
+
+    st.subheader(dia)
+
+    columnas = st.columns(4)
+
+    contador = 0
+
+    for hora in range(6, 24):
+
+        ocupado = horario_ocupado.loc[hora, dia]
+
+        en_sueno = hora in horas_sueno
+
+        energia_actual = energia.get(hora, 1)
+
+        disponible = (
+            not ocupado
+            and not en_sueno
+            and energia_actual >= 2
+        )
+
+        if disponible:
+
+            with columnas[contador % 4]:
+
+                clave = f"{dia}_{hora}"
+
+                bloques_estudio[clave] = st.checkbox(
+                    f"{hora}:00 - {hora+1}:00",
+                    value=True
+                )
+
+            contador += 1
