@@ -172,15 +172,30 @@ if agregar_otro:
             "teoria": teoria_otro,
             "laboratorio": laboratorio_otro
         })
- horario_ocupado = pd.DataFrame(
+st.header("3. Horario ocupado")
+
+st.write("""
+Marca los bloques horarios que ya están ocupados:
+- clases
+- trabajo
+- traslado
+- responsabilidades
+- otras actividades
+""")
+
+# Crear tabla vacía
+
+horario_base = pd.DataFrame(
     False,
     index=HORAS,
     columns=DIAS
 )
-st.data_editor()
-st.header("3. Horario ocupado")
+
+# Editor interactivo
 
 horario_ocupado = st.data_editor(
-    horario_ocupado,
+    horario_base,
     use_container_width=True
 )
+
+st.write("True = ocupado / False = libre")
