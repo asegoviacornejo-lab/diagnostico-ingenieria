@@ -1,284 +1,250 @@
 import streamlit as st
-import pandas as pd
-import random
-from collections import defaultdict
+import json
+import os
+
+# ======================================================
+# CONFIGURACIÓN DE LA PÁGINA
+# ======================================================
 
 st.set_page_config(
-    page_title="Planificador Académico",
+    page_title="Diagnóstico Académico",
+    page_icon="📚",
     layout="wide"
 )
 
-st.title("Planificador Académico Adaptativo")
+# ======================================================
+# ESTRUCTURA BASE DEL PROYECTO
+# ======================================================
 
-st.write("""
-Este sistema:
-- calcula horas autónomas
-- identifica horarios ocupados
-- considera responsabilidades personales
-- considera energía
-- genera múltiples horarios posibles
-- mantiene proporcionalidad entre ramos
-""")
+ARCHIVO_DATOS = "usuario.json"
 
-RAMOS = {
-    "Introducción al Cálculo": (6, 2),
-    "Introducción al Álgebra": (6, 2),
-    "Introducción a la Ingeniería": (4, 0),
-    "Taller de Estrategias de Aprendizaje para Ingeniería": (0, 4),
-    "Cálculo Diferencial e Integral": (6, 0),
-    "Cálculo Integral": (6, 0),
-    "Álgebra Lineal": (6, 0),
-    "Física Newtoniana": (6, 2),
-    "Física Newtoniana para Ingenieros": (6, 2),
-    "Taller de Habilidades Comunicativas para Ingeniería": (0, 2),
-    "Taller de Habilidades Comunicativas para Ingenieros": (0, 4),
-    "Dibujo de Ingeniería": (2, 2),
-    "Herramientas Computacionales para Ingeniería": (0, 2),
-    "Fundamentos de Programación y Computación": (2, 2),
-    "Cálculo en Varias Variables": (4, 0),
-    "Cálculo Vectorial": (6, 0),
-    "Ecuaciones Diferenciales": (4, 0),
-    "Electromagnetismo M2024": (4, 2),
-    "Electromagnetismo M2023": (6, 2),
-    "Química General": (4, 2),
-    "Programación para Ingeniería": (0, 4),
-    "Termodinámica": (4, 0),
-    "Probabilidad y Estadística": (4, 0),
-    "Estadística Aplicada": (6, 0),
-    "Óptica y Ondas": (4, 2),
-    "Mecánica": (4, 2),
-    "Mecánica Estática": (6, 0),
-    "Desafío de Proyecto de Ingeniería I": (0, 4),
-    "Inglés para Ingeniería I": (2, 2),
-    "Métodos Numéricos para Ingeniería": (4, 0),
-    "Métodos Numéricos": (6, 0),
-    "Ciencias de Materiales": (4, 2),
-    "Ingeniería de Materiales": (2, 2),
-    "Fundamentos de Economía": (4, 0),
-    "Mecánica de Sólidos M2024": (4, 2),
-    "Mecánica de Sólidos M2023": (6, 0),
-    "Investigación de Operaciones": (4, 0),
-    "Inglés para Ingeniería II": (2, 2),
-    "Filosofía de las Ciencias de la Ingeniería": (4, 0),
-    "Taller de Creatividad": (0, 2)
+DATOS_INICIALES = {
+    "perfil": {
+        "nombre": "",
+        "correo": "",
+        "universidad": "",
+        "carrera": "",
+        "valor_sct": 27
+    },
+
+    "asignaturas": [],
+
+    "sueno": {
+        "sueno_real": None,
+        "sueno_recuperacion": None
+    },
+
+    "actividades": [],
+
+    "horario": [],
+
+    "resultados_nivel1": {},
+
+    "horario_estudio": [],
+
+    "evaluaciones": [],
+
+    "registro_estudio": [],
+
+    "rendimiento": [],
+
+    "configuracion": {}
 }
 
-DIAS = [
-    "Lunes",
-    "Martes",
-    "Miércoles",
-    "Jueves",
-    "Viernes",
-    "Sábado",
-    "Domingo"
-]
+# ======================================================
+# FUNCIONES DE PERSISTENCIA
+# ======================================================
 
-HORAS = list(range(0, 24))
-st.header("1. Información universitaria")
+def crear_archivo_si_no_existe():
+    if not os.path.exists(ARCHIVO_DATOS):
+        with open(ARCHIVO_DATOS, "w", encoding="utf-8") as archivo:
+            json.dump(
+                DATOS_INICIALES,
+                archivo,
+                indent=4,
+                ensure_ascii=False
+            )
 
-uls = st.radio(
-    "¿Eres estudiante de la Universidad de La Serena?",
-    ["Sí", "No"]
-)
 
-if uls == "Sí":
+def cargar_datos():
+    with open(ARCHIVO_DATOS, "r", encoding="utf-8") as archivo:
+        return json.load(archivo)
 
-    universidad = "Universidad de La Serena"
-    ct = 27
-    horas_credito = "Automático"
 
-else:
-
-    universidad = st.text_input(
-        "Nombre de tu universidad"
-    )
-
-    horas_credito = st.text_input(
-        "¿A cuántas horas equivale 1 crédito transferible en tu universidad?"
-    )
-
-    if horas_credito.strip() == "":
-        horas_credito = "Estimado"
-
-    ct = st.number_input(
-        "Cantidad de créditos transferibles",
-        min_value=1,
-        step=1
-    )
-
-st.header("2. Selección de ramos")
-
-opciones_ramos = []
-
-for nombre, datos in RAMOS.items():
-
-    t, l = datos
-
-    opciones_ramos.append(
-        f"{nombre} (T{t},L{l})"
-    )
-
-seleccion_ramos = st.multiselect(
-    "Selecciona tus ramos",
-    opciones_ramos
-)
-
-ramos = []
-
-for seleccion in seleccion_ramos:
-
-    for nombre, datos in RAMOS.items():
-
-        t, l = datos
-
-        texto = f"{nombre} (T{t},L{l})"
-
-        if seleccion == texto:
-
-            ramos.append({
-                "nombre": nombre,
-                "teoria": t,
-                "laboratorio": l
-            })
-
-st.subheader("Agregar ramo personalizado")
-
-agregar_otro = st.checkbox(
-    "Agregar ramo OTRO"
-)
-
-if agregar_otro:
-
-    nombre_otro = st.text_input(
-        "Nombre ramo"
-    )
-
-    teoria_otro = st.number_input(
-        "Horas teoría",
-        min_value=0,
-        step=1
-    )
-
-    laboratorio_otro = st.number_input(
-        "Horas laboratorio/práctica",
-        min_value=0,
-        step=1
-    )
-
-    if nombre_otro:
-
-        ramos.append({
-            "nombre": nombre_otro,
-            "teoria": teoria_otro,
-            "laboratorio": laboratorio_otro
-        })
-
-# ==================================================
-# 3. CONFIGURACIÓN DE ACTIVIDADES
-# ==================================================
-
-st.header("3. Configuración de actividades")
-
-st.write("""
-Configura cómo te afectan las distintas actividades
-de tu rutina diaria.
-""")
-
-# ==================================================
-# ACTIVIDADES BASE
-# ==================================================
-
-ACTIVIDADES = {}
-
-# Agregar ramos seleccionados como actividades
-
-for ramo in ramos:
-    ACTIVIDADES[ramo["nombre"]] = {
-        "desgaste": 3,
-        "compatibilidad": 1
-    }
-
-# Actividades base automáticas
-
-actividades_base = ["Dormir", "Transporte", "Tiempo personal", "Descanso"]
-
-for actividad in actividades_base:
-    ACTIVIDADES[actividad] = {
-        "desgaste": 2,
-        "compatibilidad": 2
-    }
-
-# ==================================================
-# ACTIVIDADES PERSONALIZADAS
-# ==================================================
-
-st.subheader("Agregar actividades personales")
-
-cantidad_actividades = st.number_input(
-    "¿Cuántas actividades extra quieres agregar?",
-    min_value=0,
-    max_value=15,
-    value=2
-)
-
-for i in range(cantidad_actividades):
-
-    st.markdown(f"### Actividad extra {i+1}")
-
-    nombre_actividad = st.text_input(
-        "Nombre actividad",
-        key=f"actividad_{i}"
-    )
-
-    if nombre_actividad.strip() != "":
-        ACTIVIDADES[nombre_actividad] = {
-            "desgaste": 2,
-            "compatibilidad": 2
-        }
-
-# ==================================================
-# CONFIGURACIÓN FINAL
-# ==================================================
-
-st.subheader("Personaliza tus actividades")
-
-for nombre in list(ACTIVIDADES.keys()):
-
-    st.markdown(f"## {nombre}")
-
-    col1, col2 = st.columns(2)
-
-    with col1:
-        desgaste = st.slider(
-            "¿Cuánta energía consume?",
-            0, 5,
-            ACTIVIDADES[nombre]["desgaste"],
-            key=f"desgaste_{nombre}"
+def guardar_datos(datos):
+    with open(ARCHIVO_DATOS, "w", encoding="utf-8") as archivo:
+        json.dump(
+            datos,
+            archivo,
+            indent=4,
+            ensure_ascii=False
         )
 
-    with col2:
-        compatibilidad = st.slider(
-            "¿Qué tan compatible es con estudiar?",
-            0, 5,
-            ACTIVIDADES[nombre]["compatibilidad"],
-            key=f"compat_{nombre}"
-        )
+# ======================================================
+# CONTROL DE COMPLETITUD
+# ======================================================
 
-    ACTIVIDADES[nombre]["desgaste"] = desgaste
-    ACTIVIDADES[nombre]["compatibilidad"] = compatibilidad
+def obtener_estado(datos):
 
-    # Interpretación automática
+    estado = {
+        "Perfil": False,
+        "Asignaturas": False,
+        "Sueño": False,
+        "Actividades": False,
+        "Horario": False
+    }
 
-    if desgaste >= 4:
-        st.warning("Actividad de alto desgaste.")
-    elif desgaste >= 2:
-        st.info("Actividad de desgaste moderado.")
-    else:
-        st.success("Actividad ligera.")
+    perfil = datos["perfil"]
 
-    if compatibilidad >= 4:
-        st.success("Muy compatible con estudio.")
-    elif compatibilidad >= 2:
-        st.info("Compatible con estudio ligero.")
-    else:
-        st.warning("Difícil estudiar durante esta actividad.")
+    if (
+        perfil["nombre"]
+        and perfil["universidad"]
+        and perfil["carrera"]
+    ):
+        estado["Perfil"] = True
+
+    if len(datos["asignaturas"]) > 0:
+        estado["Asignaturas"] = True
+
+    if (
+        datos["sueno"]["sueno_real"] is not None
+        and
+        datos["sueno"]["sueno_recuperacion"] is not None
+    ):
+        estado["Sueño"] = True
+
+    if len(datos["actividades"]) > 0:
+        estado["Actividades"] = True
+
+    if len(datos["horario"]) > 0:
+        estado["Horario"] = True
+
+    return estado
+
+
+def calcular_porcentaje(estado):
+
+    total = len(estado)
+    completas = sum(estado.values())
+
+    return int((completas / total) * 100)
+
+# ======================================================
+# INICIO
+# ======================================================
+
+crear_archivo_si_no_existe()
+
+datos = cargar_datos()
+
+# ======================================================
+# BARRA LATERAL
+# ======================================================
+
+with st.sidebar:
+
+    st.title("📚 Diagnóstico")
+
+    estado = obtener_estado(datos)
+
+    porcentaje = calcular_porcentaje(estado)
+
+    st.progress(porcentaje / 100)
+
+    st.write(f"**Perfil completado: {porcentaje}%**")
+
+    st.divider()
+
+    for seccion, completa in estado.items():
+
+        if completa:
+            st.success(f"✓ {seccion}")
+        else:
+            st.warning(f"✗ {seccion}")
+
+# ======================================================
+# PERFIL
+# ======================================================
+
+st.title("Diagnóstico Académico")
+
+st.header("Perfil Académico")
+
+nombre = st.text_input(
+    "Nombre o apodo",
+    value=datos["perfil"]["nombre"]
+)
+
+correo = st.text_input(
+    "Correo electrónico (opcional)",
+    value=datos["perfil"]["correo"]
+)
+
+universidad = st.text_input(
+    "Universidad",
+    value=datos["perfil"]["universidad"]
+)
+
+carrera = st.text_input(
+    "Carrera",
+    value=datos["perfil"]["carrera"]
+)
+
+valor_sct = st.number_input(
+    "Valor de 1 SCT (horas)",
+    min_value=1,
+    value=datos["perfil"]["valor_sct"]
+)
+
+# ======================================================
+# GUARDADO AUTOMÁTICO
+# ======================================================
+
+datos["perfil"]["nombre"] = nombre
+datos["perfil"]["correo"] = correo
+datos["perfil"]["universidad"] = universidad
+datos["perfil"]["carrera"] = carrera
+datos["perfil"]["valor_sct"] = valor_sct
+
+guardar_datos(datos)
+
+st.success("✓ Cambios guardados automáticamente")
+
+# ======================================================
+# RESUMEN
+# ======================================================
+
+st.divider()
+
+st.subheader("Resumen actual")
+
+st.write("### Perfil")
+
+st.write(f"**Nombre:** {nombre}")
+st.write(f"**Correo:** {correo}")
+st.write(f"**Universidad:** {universidad}")
+st.write(f"**Carrera:** {carrera}")
+st.write(f"**Valor SCT:** {valor_sct}")
+
+# ======================================================
+# SALIDA ESPERADA
+# ======================================================
+
+# Al completar:
+#
+# Nombre: Antonia
+# Universidad: Universidad de La Serena
+# Carrera: Ingeniería Civil Industrial
+# Valor SCT: 27
+#
+# La barra lateral mostrará:
+#
+# Perfil: ✓
+# Asignaturas: ✗
+# Sueño: ✗
+# Actividades: ✗
+# Horario: ✗
+#
+# Perfil completado: 20%
+#
+# Y toda la información quedará guardada en usuario.json
